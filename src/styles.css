@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+@theme {
+  --color-space: #050508;
+  --color-panel: #090911;
+  --color-cyan: #00f0ff;
+  --color-purple: #a855f7;
+  --color-amber: #f59e0b;
+  --color-phosphor: #10b981;
+  --font-sans: "Inter", "Outfit", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --animate-scan-pulse: scanPulse 2.6s ease-in-out infinite;
+}
+
+@keyframes scanPulse {
+  0%, 100% { opacity: 0.42; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.015); }
+}
+
+:root {
+  color-scheme: dark;
+  background: #050508;
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  margin: 0;
+  overflow: hidden;
+  background: #050508;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  color: #eefcff;
+}
+
+button,
+a {
+  touch-action: manipulation;
+}
+
+canvas,
+video {
+  display: block;
+}
+
+.safe-shell {
+  min-height: 100dvh;
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  overflow: hidden;
+}
+
+.glass-panel {
+  @apply rounded-2xl border border-white/10 bg-black/60 shadow-2xl shadow-cyan/5 backdrop-blur-md;
+}
+
+.telemetry-label {
+  @apply text-[0.62rem] uppercase tracking-[0.22em] text-white/45;
+}
+
+.telemetry-value {
+  @apply font-mono text-sm tabular-nums text-cyan;
+}
+
+.scan-grid {
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.045) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
