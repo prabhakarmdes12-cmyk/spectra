@@ -52,11 +52,20 @@ function newSessionId() {
   return `SES-${stamp}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
 }
 
+function initialNightExpedition() {
+  try {
+    return localStorage.getItem('spectra-night-expedition') === 'true';
+  } catch {
+    return false;
+  }
+}
+
 interface SpectraState {
   activeTab: AppTab;
   activeLayer: SensorLayer;
   activeScan: boolean;
   soundMuted: boolean;
+  nightExpedition: boolean;
   snapshot: SensorSnapshot;
   capabilities: CapabilityDescriptor[];
   session: SessionRecord | null;
@@ -68,6 +77,8 @@ interface SpectraState {
   setActiveTab: (tab: AppTab) => void;
   setActiveLayer: (layer: SensorLayer) => void;
   setSoundMuted: (muted: boolean) => void;
+  setNightExpedition: (enabled: boolean) => void;
+  toggleNightExpedition: () => void;
   dismissOnboarding: () => void;
   refreshCapabilities: () => Promise<void>;
   startSession: (mode?: SessionMode) => Promise<SessionRecord>;
@@ -86,6 +97,7 @@ export const useSpectraStore = create<SpectraState>((set, get) => ({
   activeLayer: 'all',
   activeScan: false,
   soundMuted: false,
+  nightExpedition: initialNightExpedition(),
   snapshot: initialSnapshot(),
   capabilities: [],
   session: null,
@@ -97,6 +109,23 @@ export const useSpectraStore = create<SpectraState>((set, get) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
   setActiveLayer: (layer) => set({ activeLayer: layer }),
   setSoundMuted: (muted) => set({ soundMuted: muted }),
+  setNightExpedition: (enabled) => {
+    try {
+      localStorage.setItem('spectra-night-expedition', String(enabled));
+    } catch {
+      // localStorage may be unavailable in hardened browsing modes.
+    }
+    set({ nightExpedition: enabled });
+  },
+  toggleNightExpedition: () => {
+    const enabled = !get().nightExpedition;
+    try {
+      localStorage.setItem('spectra-night-expedition', String(enabled));
+    } catch {
+      // localStorage may be unavailable in hardened browsing modes.
+    }
+    set({ nightExpedition: enabled });
+  },
   dismissOnboarding: () => set({ onboardingDismissed: true }),
   refreshCapabilities: async () => {
     try {
