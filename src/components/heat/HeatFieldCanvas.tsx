@@ -22,36 +22,55 @@ export function HeatFieldCanvas() {
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return undefined;
     let raf = 0;
-    const resize = () => {
+
+    let width = 300;
+    let height = 300;
+
+    const handleResize = () => {
       const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      width = rect.width;
+      height = rect.height;
       const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      const targetW = Math.max(1, Math.floor(width * dpr));
+      const targetH = Math.max(1, Math.floor(height * dpr));
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+      }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
+
+    const ro = new ResizeObserver(() => {
+      handleResize();
+    });
+    ro.observe(canvas);
+    handleResize();
+
     const draw = () => {
-      const rect = canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-      if (canvas.width !== Math.floor(rect.width * dpr)) resize();
-      const width = rect.width;
-      const height = rect.height;
+      if (width <= 0 || height <= 0) {
+        raf = requestAnimationFrame(draw);
+        return;
+      }
       const center = { x: width / 2, y: height / 2 };
-      const radius = Math.min(width, height) * 0.43;
+      const radius = Math.min(width, height) * 0.44;
       const { heat, path, activeLayer } = useSpectraStore.getState();
+
       ctx.clearRect(0, 0, width, height);
       drawBase(ctx, width, height, center, radius);
       drawSamples(ctx, heat, center, radius, activeLayer);
       drawObservationMask(ctx, path, center, radius);
       drawPath(ctx, path, center, radius);
       drawLegend(ctx, width, height, activeLayer, heat.length);
+
       raf = requestAnimationFrame(draw);
     };
-    resize();
-    window.addEventListener('resize', resize);
+
     raf = requestAnimationFrame(draw);
+
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener('resize', resize);
+      ro.disconnect();
     };
   }, []);
 

@@ -1,38 +1,74 @@
 @import "tailwindcss";
 
 @theme {
-  --color-space: #050508;
-  --color-panel: #090911;
+  --color-space: #030206;
+  --color-panel: #080711;
   --color-cyan: #00f0ff;
   --color-purple: #a855f7;
   --color-amber: #f59e0b;
   --color-phosphor: #10b981;
   --font-sans: "Inter", "Outfit", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --animate-scan-pulse: scanPulse 2.6s ease-in-out infinite;
 }
 
-@keyframes scanPulse {
-  0%, 100% { opacity: 0.42; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.015); }
+@keyframes radarSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-@keyframes atmosphereFlicker {
-  0%, 100% { opacity: 0.84; }
-  17% { opacity: 0.78; }
-  31% { opacity: 0.88; }
-  53% { opacity: 0.74; }
-  79% { opacity: 0.9; }
+@keyframes radarSpinReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
 }
 
-@keyframes unknownRingPulse {
-  0%, 100% { opacity: 0.16; transform: scale(0.985); filter: blur(0); }
-  45% { opacity: 0.48; transform: scale(1.01); filter: blur(1px); }
+@keyframes pulseGlow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 35px rgba(0, 240, 255, 0.3), 0 0 65px rgba(168, 85, 247, 0.15), inset 0 0 20px rgba(0, 240, 255, 0.2);
+  }
+  50% {
+    transform: scale(1.025);
+    box-shadow: 0 0 55px rgba(0, 240, 255, 0.55), 0 0 95px rgba(168, 85, 247, 0.3), inset 0 0 30px rgba(0, 240, 255, 0.35);
+  }
+}
+
+@keyframes ringWave {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+@keyframes ringWaveDelayed {
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.95);
+    opacity: 0;
+  }
+}
+
+@keyframes atmosphereBreath {
+  0% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0.65;
+  }
 }
 
 :root {
   color-scheme: dark;
-  background: #050508;
+  background: #030206;
   font-family: var(--font-sans);
   font-synthesis: none;
   text-rendering: geometricPrecision;
@@ -53,7 +89,7 @@ body,
   min-height: 100dvh;
   margin: 0;
   overflow: hidden;
-  background: #050508;
+  background: #030206;
 }
 
 body {
@@ -83,58 +119,79 @@ video {
 }
 
 .night-expedition-shell {
-  background: #020104;
+  background: #010003;
 }
 
 .night-expedition-shell .glass-panel {
-  box-shadow: 0 24px 80px rgba(245, 158, 11, 0.045), 0 0 0 1px rgba(245, 158, 11, 0.035) inset;
+  box-shadow: 0 20px 60px rgba(245, 158, 11, 0.05), 0 0 0 1px rgba(245, 158, 11, 0.08) inset;
 }
 
+/* Atmospheric Layer - Smooth & Anti-Flicker */
 .atmosphere-vignette {
   background:
-    radial-gradient(circle at 50% 44%, transparent 0%, transparent 42%, rgba(0, 0, 0, 0.34) 68%, rgba(0, 0, 0, 0.78) 100%),
-    radial-gradient(circle at 50% 115%, rgba(245, 158, 11, 0.16), transparent 45%),
-    linear-gradient(180deg, rgba(15, 6, 12, 0.14), rgba(0, 0, 0, 0.34));
-  animation: atmosphereFlicker 7.5s ease-in-out infinite;
+    radial-gradient(circle at 50% 45%, transparent 0%, transparent 40%, rgba(0, 0, 0, 0.4) 70%, rgba(0, 0, 0, 0.85) 100%),
+    radial-gradient(circle at 50% 110%, rgba(245, 158, 11, 0.12), transparent 50%),
+    linear-gradient(180deg, rgba(15, 6, 12, 0.1), rgba(0, 0, 0, 0.3));
+  animation: atmosphereBreath 12s ease-in-out infinite alternate;
+  pointer-events: none;
 }
 
 .atmosphere-scanlines {
-  background-image: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.055) 0 1px, transparent 1px 5px);
+  background-image: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 4px);
   mix-blend-mode: screen;
+  pointer-events: none;
 }
 
 .atmosphere-noise {
   background-image:
-    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.22) 0 1px, transparent 1px),
-    radial-gradient(circle at 78% 28%, rgba(245, 158, 11, 0.18) 0 1px, transparent 1px),
-    radial-gradient(circle at 42% 72%, rgba(168, 85, 247, 0.16) 0 1px, transparent 1px),
-    radial-gradient(circle at 64% 58%, rgba(255, 255, 255, 0.12) 0 1px, transparent 1px);
-  background-size: 29px 31px, 37px 41px, 43px 47px, 53px 59px;
+    radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.12) 0 1px, transparent 1px),
+    radial-gradient(circle at 75% 30%, rgba(245, 158, 11, 0.1) 0 1px, transparent 1px),
+    radial-gradient(circle at 45% 70%, rgba(168, 85, 247, 0.08) 0 1px, transparent 1px);
+  background-size: 32px 32px, 48px 48px, 64px 64px;
   mix-blend-mode: screen;
+  pointer-events: none;
 }
 
 .atmosphere-unknown-ring {
-  animation: unknownRingPulse 1.65s ease-in-out infinite;
-  box-shadow: inset 0 0 34px rgba(245, 158, 11, 0.12), 0 0 42px rgba(245, 158, 11, 0.08);
+  transition: opacity 1s ease-in-out;
+  box-shadow: inset 0 0 30px rgba(245, 158, 11, 0.12), 0 0 30px rgba(245, 158, 11, 0.08);
 }
 
+/* Glassmorphism & UI Panels */
 .glass-panel {
-  @apply rounded-2xl border border-white/10 bg-black/60 shadow-2xl shadow-cyan/5 backdrop-blur-md;
+  background: rgba(8, 7, 17, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.glass-pill {
+  background: rgba(14, 13, 26, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .telemetry-label {
-  @apply text-[0.62rem] uppercase tracking-[0.22em] text-white/45;
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .telemetry-value {
-  @apply font-mono text-sm tabular-nums text-cyan;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-cyan);
 }
 
 .scan-grid {
   background-image:
-    linear-gradient(rgba(0, 240, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 240, 255, 0.045) 1px, transparent 1px);
-  background-size: 28px 28px;
+    linear-gradient(rgba(0, 240, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.035) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -143,4 +200,26 @@ video {
 
 .no-scrollbar {
   scrollbar-width: none;
+}
+
+/* Glowing Circular Scan Button */
+.circular-scan-trigger {
+  animation: pulseGlow 3.5s ease-in-out infinite;
+}
+
+.radar-ring-wave {
+  animation: ringWave 3.2s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+}
+
+.radar-ring-wave-delayed {
+  animation: ringWaveDelayed 3.2s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+  animation-delay: 1.4s;
+}
+
+.radar-spin-slow {
+  animation: radarSpin 24s linear infinite;
+}
+
+.radar-spin-reverse {
+  animation: radarSpinReverse 32s linear infinite;
 }

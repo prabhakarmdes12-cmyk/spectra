@@ -32,30 +32,48 @@ export function RadarCanvas() {
     if (!ctx) return undefined;
     let raf = 0;
 
-    const resize = () => {
+    let width = 300;
+    let height = 300;
+
+    const handleResize = () => {
       const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      width = rect.width;
+      height = rect.height;
       const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      const targetW = Math.max(1, Math.floor(width * dpr));
+      const targetH = Math.max(1, Math.floor(height * dpr));
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+      }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
+    const ro = new ResizeObserver(() => {
+      handleResize();
+    });
+    ro.observe(canvas);
+    handleResize();
+
     const draw = () => {
-      const rect = canvas.getBoundingClientRect();
-      if (canvas.width !== Math.floor(rect.width * Math.min(window.devicePixelRatio || 1, 2.5))) resize();
-      const width = rect.width;
-      const height = rect.height;
+      if (width <= 0 || height <= 0) {
+        raf = requestAnimationFrame(draw);
+        return;
+      }
       const center = { x: width / 2, y: height / 2 };
-      const radius = Math.min(width, height) * 0.43;
+      const radius = Math.min(width, height) * 0.44;
       const state = useSpectraStore.getState();
       const { snapshot, events, path, activeLayer, activeScan } = state;
       const now = performance.timeOrigin + performance.now();
 
       ctx.clearRect(0, 0, width, height);
-      const bg = ctx.createRadialGradient(center.x, center.y, radius * 0.05, center.x, center.y, radius * 1.2);
-      bg.addColorStop(0, 'rgba(0, 240, 255, 0.08)');
-      bg.addColorStop(0.5, 'rgba(5, 5, 8, 0.6)');
-      bg.addColorStop(1, 'rgba(0, 0, 0, 0.25)');
+
+      // Deep space radial background
+      const bg = ctx.createRadialGradient(center.x, center.y, radius * 0.05, center.x, center.y, radius * 1.15);
+      bg.addColorStop(0, 'rgba(0, 240, 255, 0.07)');
+      bg.addColorStop(0.45, 'rgba(7, 6, 14, 0.65)');
+      bg.addColorStop(1, 'rgba(3, 2, 6, 0.3)');
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, width, height);
 
@@ -71,12 +89,11 @@ export function RadarCanvas() {
       raf = requestAnimationFrame(draw);
     };
 
-    resize();
-    window.addEventListener('resize', resize);
     raf = requestAnimationFrame(draw);
+
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener('resize', resize);
+      ro.disconnect();
     };
   }, []);
 
@@ -86,24 +103,48 @@ export function RadarCanvas() {
 function drawRings(ctx: CanvasRenderingContext2D, center: { x: number; y: number }, radius: number) {
   ctx.save();
   ctx.lineWidth = 1;
+
   for (const meters of [5, 10, 20, 30]) {
     const r = (meters / OBSERVATION_RADIUS_METERS) * radius;
     ctx.beginPath();
     ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
-    ctx.strokeStyle = meters === 30 ? 'rgba(0,240,255,0.35)' : 'rgba(255,255,255,0.12)';
+    if (meters === 30) {
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.45)';
+      ctx.shadowColor = 'rgba(0, 240, 255, 0.3)';
+      ctx.shadowBlur = 8;
+    } else {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.shadowBlur = 0;
+    }
     ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.42)';
-    ctx.font = '10px JetBrains Mono, monospace';
-    ctx.fillText(`${meters}m`, center.x + 6, center.y - r + 12);
+
+    // Range readout badge
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = meters === 30 ? 'rgba(0, 240, 255, 0.75)' : 'rgba(255, 255, 255, 0.4)';
+    ctx.font = '9px JetBrains Mono, monospace';
+    ctx.fillText(`${meters}M`, center.x + 6, center.y - r + 11);
   }
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+
+  // Crosshair spoke reticles
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
   for (let i = 0; i < 12; i += 1) {
     const angle = (i / 12) * Math.PI * 2;
     ctx.beginPath();
-    ctx.moveTo(center.x + Math.cos(angle) * radius * 0.08, center.y + Math.sin(angle) * radius * 0.08);
+    ctx.moveTo(center.x + Math.cos(angle) * radius * 0.1, center.y + Math.sin(angle) * radius * 0.1);
     ctx.lineTo(center.x + Math.cos(angle) * radius, center.y + Math.sin(angle) * radius);
     ctx.stroke();
   }
+
+  // Center crosshair
+  ctx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(center.x - 7, center.y);
+  ctx.lineTo(center.x + 7, center.y);
+  ctx.moveTo(center.x, center.y - 7);
+  ctx.lineTo(center.x, center.y + 7);
+  ctx.stroke();
+
   ctx.restore();
 }
 
@@ -111,30 +152,40 @@ function drawCompass(ctx: CanvasRenderingContext2D, center: { x: number; y: numb
   ctx.save();
   ctx.translate(center.x, center.y);
   ctx.rotate((-heading * Math.PI) / 180);
-  ctx.font = '11px JetBrains Mono, monospace';
+  ctx.font = 'bold 11px JetBrains Mono, monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+
   const marks = [
     ['N', 0, -radius - 14],
     ['E', radius + 14, 0],
     ['S', 0, radius + 14],
     ['W', -radius - 14, 0],
   ] as const;
+
   for (const [label, x, y] of marks) {
-    ctx.fillStyle = label === 'N' ? COLORS.amber : 'rgba(255,255,255,0.45)';
+    if (label === 'N') {
+      ctx.fillStyle = COLORS.amber;
+      ctx.shadowColor = 'rgba(245, 158, 11, 0.6)';
+      ctx.shadowBlur = 6;
+    } else {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.shadowBlur = 0;
+    }
     ctx.fillText(label, x, y);
   }
   ctx.restore();
 }
 
 function drawCoverage(ctx: CanvasRenderingContext2D, center: { x: number; y: number }, radius: number, path: Array<{ x: number; y: number; uncertainty: number }>) {
+  if (!path.length) return;
   ctx.save();
   for (const point of path.slice(-350)) {
     const p = metersToCanvas(point, OBSERVATION_RADIUS_METERS, center, radius);
-    const r = Math.max(4, (point.uncertainty / OBSERVATION_RADIUS_METERS) * radius * 1.8);
+    const r = Math.max(4, (point.uncertainty / OBSERVATION_RADIUS_METERS) * radius * 1.6);
     const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-    gradient.addColorStop(0, 'rgba(16,185,129,0.12)');
-    gradient.addColorStop(1, 'rgba(16,185,129,0)');
+    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.12)');
+    gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
     ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
@@ -149,16 +200,16 @@ function drawPath(ctx: CanvasRenderingContext2D, center: { x: number; y: number 
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   ctx.beginPath();
-  path.slice(-800).forEach((point, index) => {
+  path.slice(-600).forEach((point, index) => {
     const p = metersToCanvas(point, OBSERVATION_RADIUS_METERS, center, radius);
     if (index === 0) ctx.moveTo(p.x, p.y);
     else ctx.lineTo(p.x, p.y);
   });
-  ctx.lineWidth = 7;
-  ctx.strokeStyle = 'rgba(0,240,255,0.08)';
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = 'rgba(0, 240, 255, 0.08)';
   ctx.stroke();
   ctx.lineWidth = 2;
-  ctx.strokeStyle = 'rgba(0,240,255,0.72)';
+  ctx.strokeStyle = 'rgba(0, 240, 255, 0.75)';
   ctx.stroke();
   ctx.restore();
 }
@@ -166,25 +217,31 @@ function drawPath(ctx: CanvasRenderingContext2D, center: { x: number; y: number 
 function drawSweep(ctx: CanvasRenderingContext2D, center: { x: number; y: number }, radius: number, now: number, active: boolean) {
   const angle = ((now / 2600) % 1) * Math.PI * 2 - Math.PI / 2;
   ctx.save();
-  ctx.globalAlpha = active ? 1 : 0.32;
+  ctx.globalAlpha = active ? 1 : 0.35;
+
+  // Sweeping gradient wedge
   const gradient = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, radius);
-  gradient.addColorStop(0, 'rgba(0,240,255,0.38)');
-  gradient.addColorStop(0.55, 'rgba(0,240,255,0.13)');
-  gradient.addColorStop(1, 'rgba(0,240,255,0)');
+  gradient.addColorStop(0, 'rgba(0, 240, 255, 0.35)');
+  gradient.addColorStop(0.55, 'rgba(0, 240, 255, 0.12)');
+  gradient.addColorStop(1, 'rgba(0, 240, 255, 0)');
+
   ctx.beginPath();
   ctx.moveTo(center.x, center.y);
-  ctx.arc(center.x, center.y, radius, angle - 0.18, angle + 0.018);
+  ctx.arc(center.x, center.y, radius, angle - 0.22, angle + 0.015);
   ctx.closePath();
   ctx.fillStyle = gradient;
   ctx.fill();
+
+  // Sharp leading laser line
   ctx.beginPath();
   ctx.moveTo(center.x, center.y);
   ctx.lineTo(center.x + Math.cos(angle) * radius, center.y + Math.sin(angle) * radius);
-  ctx.strokeStyle = 'rgba(0,240,255,0.8)';
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(0, 240, 255, 0.9)';
+  ctx.lineWidth = 1.5;
   ctx.shadowColor = COLORS.cyan;
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 10;
   ctx.stroke();
+
   ctx.restore();
 }
 
@@ -206,12 +263,12 @@ function drawEvents(
     ctx.globalAlpha = decay;
 
     if (event.spatialClass === 'UNKNOWN_ORIGIN') {
-      const r = radius * (0.92 + Math.sin(now / 350) * 0.015);
+      const r = radius * 0.95;
       ctx.beginPath();
       ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
-      ctx.strokeStyle = color.replace(')', ',0.75)').replace('rgb', 'rgba');
-      ctx.lineWidth = 2 + event.magnitude * 3;
-      ctx.setLineDash([10, 12]);
+      ctx.strokeStyle = colorToRgba(color, 0.65);
+      ctx.lineWidth = 2 + event.magnitude * 2;
+      ctx.setLineDash([8, 10]);
       ctx.stroke();
       ctx.setLineDash([]);
       continue;
@@ -219,26 +276,29 @@ function drawEvents(
 
     const point = event.position ?? { x: 0, y: 0, uncertainty: 2 };
     const p = metersToCanvas(point, OBSERVATION_RADIUS_METERS, center, radius);
+
     if (event.spatialClass === 'ESTIMATED') {
       const uncertainty = event.region?.radius ?? point.uncertainty * 2;
       const pr = Math.max(12, (uncertainty / OBSERVATION_RADIUS_METERS) * radius);
       const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, pr);
-      gradient.addColorStop(0, colorToRgba(color, 0.32));
+      gradient.addColorStop(0, colorToRgba(color, 0.3));
       gradient.addColorStop(1, colorToRgba(color, 0));
       ctx.fillStyle = gradient;
       ctx.beginPath();
       ctx.arc(p.x, p.y, pr, 0, Math.PI * 2);
       ctx.fill();
     }
-    const blipRadius = 4 + event.magnitude * 10;
+
+    const blipRadius = 4 + event.magnitude * 8;
     ctx.shadowColor = color;
-    ctx.shadowBlur = 14;
-    ctx.fillStyle = colorToRgba(color, event.spatialClass === 'ESTIMATED' ? 0.58 : 0.95);
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = colorToRgba(color, event.spatialClass === 'ESTIMATED' ? 0.65 : 0.95);
     ctx.beginPath();
     ctx.arc(p.x, p.y, blipRadius, 0, Math.PI * 2);
     ctx.fill();
+
     ctx.shadowBlur = 0;
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.lineWidth = 1;
     ctx.stroke();
   }
@@ -256,35 +316,41 @@ function drawPhone(
   const point = path[path.length - 1] ?? { x: 0, y: 0, uncertainty: 1 };
   const p = metersToCanvas(point, OBSERVATION_RADIUS_METERS, center, radius);
   ctx.save();
+
   const uncertaintyRadius = Math.max(8, (point.uncertainty / OBSERVATION_RADIUS_METERS) * radius);
   ctx.beginPath();
   ctx.arc(p.x, p.y, uncertaintyRadius, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,240,255,0.07)';
+  ctx.fillStyle = 'rgba(0, 240, 255, 0.08)';
   ctx.fill();
-  ctx.strokeStyle = 'rgba(0,240,255,0.18)';
+  ctx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
   ctx.stroke();
+
   ctx.translate(p.x, p.y);
   ctx.rotate(((heading - 90) * Math.PI) / 180);
+
+  // High-tech observer arrow reticle
   ctx.beginPath();
-  ctx.moveTo(16, 0);
-  ctx.lineTo(-10, -8);
-  ctx.lineTo(-5, 0);
-  ctx.lineTo(-10, 8);
+  ctx.moveTo(14, 0);
+  ctx.lineTo(-9, -7);
+  ctx.lineTo(-4, 0);
+  ctx.lineTo(-9, 7);
   ctx.closePath();
-  ctx.fillStyle = active ? COLORS.cyan : 'rgba(255,255,255,0.4)';
+
+  ctx.fillStyle = active ? COLORS.cyan : 'rgba(255, 255, 255, 0.5)';
   ctx.shadowColor = COLORS.cyan;
-  ctx.shadowBlur = active ? 12 : 0;
+  ctx.shadowBlur = active ? 10 : 0;
   ctx.fill();
+
   ctx.restore();
 }
 
 function drawTelemetry(ctx: CanvasRenderingContext2D, width: number, height: number, calibration: number, artifactPenalty: number, correlationBonus: number) {
   ctx.save();
-  ctx.font = '10px JetBrains Mono, monospace';
-  ctx.fillStyle = 'rgba(255,255,255,0.48)';
-  ctx.fillText('OBSERVATION RADIUS — NOT A RANGING CLAIM', 18, height - 18);
+  ctx.font = '9px JetBrains Mono, monospace';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.fillText('30M OBSERVATION CANVAS · SCIENTIFIC TRUTH MODEL', 16, height - 16);
   ctx.textAlign = 'right';
-  ctx.fillText(`CAL ${(calibration * 100).toFixed(0)}%  ART ${(artifactPenalty * 100).toFixed(0)}  COR +${(correlationBonus * 100).toFixed(0)}`, width - 18, height - 18);
+  ctx.fillText(`CAL ${(calibration * 100).toFixed(0)}%  ART ${(artifactPenalty * 100).toFixed(0)}  COR +${(correlationBonus * 100).toFixed(0)}`, width - 16, height - 16);
   ctx.restore();
 }
 
