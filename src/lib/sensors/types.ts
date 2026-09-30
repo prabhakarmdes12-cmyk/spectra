@@ -5,7 +5,7 @@ export type SpatialClass = 'MEASURED' | 'ESTIMATED' | 'UNKNOWN_ORIGIN';
 export type CapabilityState = 'available' | 'limited' | 'unavailable' | 'permission-required' | 'active';
 export type SessionMode = 'quick' | 'expedition' | 'lab' | 'group';
 export type SensorLayer = 'all' | 'magnetic' | 'audio' | 'rf' | 'motion' | 'light' | 'spatial';
-export type AppTab = 'radar' | 'ar' | 'heat' | 'audio' | 'report';
+export type AppTab = 'home' | 'radar' | 'ar' | 'heat' | 'audio' | 'report';
 
 export interface CapabilityDescriptor {
   id: string;

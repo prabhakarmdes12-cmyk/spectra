@@ -93,7 +93,7 @@ interface SpectraState {
 }
 
 export const useSpectraStore = create<SpectraState>((set, get) => ({
-  activeTab: 'radar',
+  activeTab: 'home',
   activeLayer: 'all',
   activeScan: false,
   soundMuted: false,
